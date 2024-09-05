@@ -1,33 +1,32 @@
-var http = require('http'),
-    express = require('express'),
-    Busboy = require('busboy'),
-    path = require('path'),
-    fs = require('fs');
+const express = require('express');
+const Busboy = require('busboy');
+const path = require('path');
+const fs = require('fs');
 
-var app = express();
+const app = express();
 
 // Ensure uploads directory exists
-var uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = path.join('/tmp', 'uploads'); // In serverless functions, use the /tmp directory
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir);
 }
 
 // Serve the upload form
 app.get('/', function (req, res) {
-    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.setHeader('Content-Type', 'text/html');
     res.write('<form action="fileupload" method="post" enctype="multipart/form-data">');
     res.write('<input type="file" name="filetoupload"><br>');
     res.write('<input type="submit">');
     res.write('</form>');
-    return res.end();
-})
+    res.end();
+});
 
 // Handle file upload
 app.post('/fileupload', function (req, res) {
-    var busboy = Busboy({ headers: req.headers });
-    
+    const busboy = Busboy({ headers: req.headers });
+
     busboy.on('file', function (fieldname, file, filename, encoding, mimetype) {
-        var saveTo = path.join(__dirname, 'uploads', filename);
+        const saveTo = path.join(uploadsDir, filename);
         file.pipe(fs.createWriteStream(saveTo));
     });
 
@@ -36,7 +35,7 @@ app.post('/fileupload', function (req, res) {
         res.end("That's all folks!");
     });
 
-    return req.pipe(busboy);
+    req.pipe(busboy);
 });
 
 // Get all image names from the 'uploads' directory
@@ -51,11 +50,9 @@ app.get('/images', function (req, res) {
             return file.endsWith('.jpg') || file.endsWith('.png') || file.endsWith('.jpeg') || file.endsWith('.gif');
         });
 
-        res.send(imageFiles);
+        res.json(imageFiles);
     });
 });
 
-// Port 3000
-app.listen(3000, function () {
-    console.log('Node app is running on port 3000');
-});
+// Export the app as a module for Vercel serverless
+module.exports = app;
